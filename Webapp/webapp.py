@@ -1,11 +1,12 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import time
 
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ (Free Key ဆိုရင် 5s refresh နဲ့ မခံပါ)
+# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  
 
 CONVERSION_FACTOR = 16.329 / 31.1034768
@@ -113,9 +114,8 @@ if st.session_state.user_messages:
             st.info(f"**Admin ({msg['time']}):** {msg['text']}")
 
 # ==========================================
-# ၅။ Market Display Fragment (The Magic Part ✨)
+# ၅။ Market Display Fragment (Smooth Refresh)
 # ==========================================
-# ဒီ Function တစ်ခုတည်းသာ ၅ စက္ကန့်တစ်ခါ Run ပါမယ်။ Page တခုလုံး မ Run ပါ။
 @st.fragment(run_every=5)
 def show_market_section():
     # 1. Fetch New Data
@@ -140,6 +140,7 @@ def show_market_section():
         sell_price = gold_mmk - GOLD_SPREAD
         
         b_col, s_col = st.columns(2)
+        # Note: Keys must be unique for fragment to work well
         if b_col.button(f"Buy Gold\n{fmt_price(buy_price)}", key="bg", use_container_width=True):
             if st.session_state.user_balance >= buy_price:
                 st.session_state.user_balance -= buy_price
@@ -190,13 +191,39 @@ def show_market_section():
 show_market_section()
 
 # ==========================================
-# ၆။ Wallet Display (Static - No Auto Refresh)
+# ၆။ Wallet Display & Styling Script
 # ==========================================
 st.divider()
 st.subheader("👤 My Wallet")
-# Wallet ကို Fragment အပြင်ထုတ်ထားတာမို့လို့ Page ငြိမ်နေပါမယ်
-# Buy/Sell နှိပ်မှသာ ဂဏန်းပြောင်းပါမယ်
+
 w_col1, w_col2, w_col3 = st.columns(3)
 w_col1.metric("Cash Balance", f"{st.session_state.user_balance:,.0f} Ks")
 w_col2.metric("Gold Assets", f"{st.session_state.user_assets['Gold']:.2f} Tical")
 w_col3.metric("Silver Assets", f"{st.session_state.user_assets['Silver']:.2f} Tical")
+
+# --- CSS/JS Injection for Button Colors ---
+# ဒီအပိုင်းက ခလုတ်တွေကို အရောင်လိုက်ရှာပြီး ချယ်ပေးပါမယ်
+components.html("""
+<script>
+    // 500ms (0.5 စက္ကန့်) တစ်ခါ ခလုတ်တွေကို လိုက်စစ်ပြီး အရောင်ပြောင်းမယ်
+    setInterval(function() {
+        var buttons = window.parent.document.querySelectorAll('button');
+        for (var i = 0; i < buttons.length; i++) {
+            var text = buttons[i].innerText;
+            
+            // Buy ပါရင် အစိမ်းရောင်ပြောင်းမယ်
+            if (text.includes("Buy")) {
+                buttons[i].style.backgroundColor = "#28a745"; // Green
+                buttons[i].style.color = "white";
+                buttons[i].style.borderColor = "#28a745";
+            }
+            // Sell ပါရင် အနီရောင်ပြောင်းမယ်
+            else if (text.includes("Sell")) {
+                buttons[i].style.backgroundColor = "#dc3545"; // Red
+                buttons[i].style.color = "white";
+                buttons[i].style.borderColor = "#dc3545";
+            }
+        }
+    }, 500); 
+</script>
+""", height=0)
