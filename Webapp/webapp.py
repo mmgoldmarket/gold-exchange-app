@@ -1,12 +1,12 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import requests # Library အစား Direct ခေါ်ရန်
 import time
-from twelvedata import TDClient
 
 # ==========================================
 # ၁။ Setting
 # ==========================================
-API_KEY = "b005ad2097b843d59d9c44ddfd3f9038" # Free Key (Rate Limit 8 calls/min)
+API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"
 CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
@@ -14,7 +14,7 @@ SILVER_SPREAD = 1000
 st.set_page_config(page_title="Gold Exchange Admin", layout="wide")
 
 # ==========================================
-# ၂။ Session State & Database
+# ၂။ Session State
 # ==========================================
 if 'usd_rate' not in st.session_state:
     st.session_state.usd_rate = 3959.1 
@@ -33,34 +33,38 @@ if 'deposit_requests' not in st.session_state:
         {"id": 1, "user": "Mg Mg", "amount": 1000000, "status": "Pending"},
     ]
 
+if 'user_messages' not in st.session_state:
+    st.session_state.user_messages = []
+
 # ==========================================
-# ၃။ Price Fetching Function (Error ရှာရန် ပြင်ဆင်ထားသည်)
+# ၃။ Price Fetching (Direct Request Method)
 # ==========================================
-@st.cache_data(ttl=20) # 20 စက္ကန့် Cache ထားမယ် (API Limit မကျော်အောင်)
+@st.cache_data(ttl=20) # 20 စက္ကန့် Cache
 def get_real_prices():
-    td = TDClient(apikey=API_KEY)
-    prices = {"XAU": None, "XAG": None, "error": None}
+    # Library မသုံးဘဲ Direct Link ဖြင့်ခေါ်ခြင်း (ပိုသေချာသည်)
+    url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
+    
+    prices = {"XAU": 2650.00, "XAG": 31.50, "raw": None, "error": None}
     
     try:
-        # API ကို လှမ်းခေါ်မည် (Real-time Price)
-        res = td.price(symbol="XAU/USD,XAG/USD").as_json()
-        
-        # ရွှေဈေး ယူမည်
-        if 'XAU/USD' in res and 'price' in res['XAU/USD']:
-            prices["XAU"] = float(res['XAU/USD']['price'])
-        elif 'price' in res and 'XAU' in str(res): # တစ်ခါတလေ Structure ပြောင်းတတ်လို့
-             prices["XAU"] = float(res['price'])
+        response = requests.get(url)
+        data = response.json()
+        prices["raw"] = data # Debug ရန် သိမ်းထားမည်
 
-        # ငွေဈေး ယူမည်
-        if 'XAG/USD' in res and 'price' in res['XAG/USD']:
-            prices["XAG"] = float(res['XAG/USD']['price'])
+        # API Error စစ်ဆေးခြင်း
+        if "code" in data and data["code"] != 200:
+             prices["error"] = data.get("message", "API Error")
+        else:
+            # Gold Parsing
+            if "XAU/USD" in data:
+                prices["XAU"] = float(data["XAU/USD"]["price"])
             
-        # API က Error Message ပြန်ပို့လာရင် မှတ်ထားမည်
-        if 'code' in res and res['code'] != 200:
-            prices['error'] = res.get('message', 'Unknown API Error')
-            
+            # Silver Parsing
+            if "XAG/USD" in data:
+                prices["XAG"] = float(data["XAG/USD"]["price"])
+                
     except Exception as e:
-        prices['error'] = str(e)
+        prices["error"] = str(e)
         
     return prices
 
@@ -79,20 +83,21 @@ def fmt_price(mmk_value):
 with st.sidebar:
     st.header("🔧 Admin Control")
     
-    # Refresh ခလုတ် (အလုပ်လုပ်နေကြောင်းသိသာအောင် Spinner ထည့်သည်)
-    if st.button("🔄 Force Refresh Data"):
+    if st.button("🔄 Force Refresh"):
         st.cache_data.clear()
         st.rerun()
         
-    # Auto Refresh Checkbox
     auto_refresh = st.checkbox("Running Auto Refresh (20s)", value=True)
 
+    # --- DEBUGGER (အရေးကြီးသည်) ---
     st.divider()
-    
-    # DEBUG SECTION (ဒါက အရေးကြီးပါတယ် - API ဘာဖြစ်နေလဲ ကြည့်ဖို့)
     with st.expander("🛠 API Debugger (Check Here)"):
-        st.write("API Key Status Checking...")
-        # ဒီနေရာမှာ API Response အစစ်ကို ပြပေးပါမယ်
+        # ဒီနေရာမှာ API က ဘာပို့လိုက်လဲ အတိအကျပြပါမယ်
+        debug_data = get_real_prices()
+        st.write("Raw Data from API:")
+        st.json(debug_data["raw"])
+        if debug_data["error"]:
+            st.error(f"Error: {debug_data['error']}")
 
     st.write("---")
     st.write("Exchange Rate Setting")
@@ -104,19 +109,13 @@ with st.sidebar:
 # --- MAIN PAGE ---
 st.title("🏆 Myanmar Gold & Silver Exchange")
 
-# ဈေးနှုန်းများ ဆွဲယူခြင်း
 data = get_real_prices()
+gold_usd = data['XAU']
+silver_usd = data['XAG']
 
-# Error ရှိရင် အနီရောင်နဲ့ စာတန်းထိုးပြမယ် (ဒါမှ သိရမှာပါ)
+# Error Warning
 if data['error']:
-    st.error(f"⚠️ API Error: {data['error']}")
-    st.warning("API Limit ပြည့်သွားတာ ဖြစ်နိုင်ပါတယ်။ 1 မိနစ်လောက်စောင့်ပြီး Refresh ပြန်နှိပ်ကြည့်ပါ။")
-    # ယာယီ Fallback ဈေးပြထားမယ် (ဒါပေမဲ့ Error တက်မှန်းသိအောင်)
-    gold_usd = 2650.00
-    silver_usd = 31.50
-else:
-    gold_usd = data['XAU'] if data['XAU'] else 2650.00
-    silver_usd = data['XAG'] if data['XAG'] else 31.50
+    st.warning(f"⚠️ Market Data Error: {data['error']} (Using backup prices)")
 
 gold_mmk = calculate_mmk(gold_usd)
 silver_mmk = calculate_mmk(silver_usd)
@@ -133,6 +132,7 @@ with col1:
     sell = gold_mmk - GOLD_SPREAD
     
     b, s = st.columns(2)
+    # Buttons Logic...
     if b.button(f"Buy Gold\n{fmt_price(buy)}", key="bg", use_container_width=True):
         st.session_state.user_balance -= buy
         st.session_state.user_assets["Gold"] += 1
@@ -145,13 +145,14 @@ with col1:
 # SILVER
 with col2:
     st.subheader("⚪ Silver (ငွေ)")
-    st.metric("World Price", f"${silver_usd:,.3f}") # Real price or 31.50 fallback
+    st.metric("World Price", f"${silver_usd:,.3f}")
     st.info(f"Base: {fmt_price(silver_mmk)}")
     
     buy_s = silver_mmk + SILVER_SPREAD
     sell_s = silver_mmk - SILVER_SPREAD
     
     b, s = st.columns(2)
+    # Buttons Logic...
     if b.button(f"Buy Silver\n{fmt_price(buy_s)}", key="bs", use_container_width=True):
         st.session_state.user_balance -= buy_s
         st.session_state.user_assets["Silver"] += 1
@@ -168,10 +169,7 @@ c1.metric("Balance", f"{st.session_state.user_balance:,.0f} Ks")
 c2.metric("Gold", f"{st.session_state.user_assets['Gold']} Tical")
 c3.metric("Silver", f"{st.session_state.user_assets['Silver']} Tical")
 
-# ==========================================
-# ၅။ Javascript Auto Refresh (More Stable)
-# ==========================================
-# Python sleep အစား Javascript နဲ့ Refresh လုပ်ခိုင်းမယ့် ကုဒ်
+# Javascript Refresh Logic
 if auto_refresh:
     components.html(
         f"""
