@@ -13,28 +13,24 @@ CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
-st.set_page_config(page_title="Gold Exchange", layout="wide")
+# Sidebar ကို အမြဲတမ်း ဖွင့်ထားရန် (expanded) သတ်မှတ်သည်
+st.set_page_config(page_title="Gold Exchange", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 🛑 UI CLEANER (Stronger Version)
+# 🛑 UI CLEANER (Fixed Version)
 # ==========================================
-# Manage App နဲ့ Footer တွေကို အတင်းဖျောက်မည့် CSS
+# Sidebar ခလုတ်မပျောက်အောင် Header ကို မဖျောက်ဘဲ Footer ကိုပဲ ဖျောက်ပါမည်
 hide_streamlit_style = """
     <style>
-    /* Top Header & Menu */
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    
-    /* Bottom Footer & Manage App Button */
+    /* Footer (Manage App) ကို ဖျောက်ခြင်း */
     footer {display: none !important;}
     [data-testid="stFooter"] {display: none !important;}
+    
+    /* Deploy Button ကို ဖျောက်ခြင်း */
     .stAppDeployButton {display: none !important;}
     
-    /* Remove whitespace at top */
-    .block-container {
-        padding-top: 1rem !important;
-    }
+    /* ညာဘက်အပေါ်ထောင့်က 3-dots Menu ကို ဖျောက်ချင်ရင် အောက်ပါလိုင်းကို သုံးပါ (မဖျောက်ချင်ရင် ဖြုတ်ထားနိုင်သည်) */
+    /* #MainMenu {visibility: hidden;} */
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -128,9 +124,10 @@ def fmt_price(mmk_value):
     return f"{mmk_value/100000:,.2f}"
 
 # ==========================================
-# ၅။ SIDEBAR
+# ၅။ SIDEBAR (Admin Only)
 # ==========================================
 with st.sidebar:
+    # Admin View ဖြစ်မှသာ Tools တွေ ပေါ်မယ်
     if is_admin:
         st.header("🔧 Admin Panel")
         st.success("Mode: Admin")
@@ -161,15 +158,16 @@ with st.sidebar:
                         req['status'] = "Approved"
                         st.session_state.user_balance += req['amount']
                         st.rerun()
-                        
+        
         st.divider()
-        st.write("🔗 **User Link:** Copy URL & remove `?view=admin`")
+        st.info("User Link: Remove `?view=admin` from URL")
 
+    # User View ဆိုရင် Welcome ပဲပြမယ် (ဒါပေမဲ့ Sidebar က ပျောက်မနေတော့ဘူး)
     else:
-        st.header("👋 Welcome User")
-        st.info("To Deposit: Please contact Admin.")
+        st.header("👋 Welcome")
+        st.info("Please contact Admin to deposit funds.")
         st.write("---")
-        st.write("**Customer Support:**")
+        st.write("**Contact Us:**")
         st.write("📞 09-xxxxxxxxx")
         st.write("💬 Viber / Telegram")
 
