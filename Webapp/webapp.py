@@ -16,17 +16,27 @@ SILVER_SPREAD = 1000
 st.set_page_config(page_title="Gold Exchange", layout="wide")
 
 # ==========================================
-# 🛑 UI CLEANER (Tools များကို ဖျောက်မည့်နေရာ)
+# 🛑 UI CLEANER (Stronger Version)
 # ==========================================
+# Manage App နဲ့ Footer တွေကို အတင်းဖျောက်မည့် CSS
 hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            .stAppDeployButton {display: none;}
-            [data-testid="stToolbar"] {visibility: hidden !important;}
-            </style>
-            """
+    <style>
+    /* Top Header & Menu */
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    
+    /* Bottom Footer & Manage App Button */
+    footer {display: none !important;}
+    [data-testid="stFooter"] {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    
+    /* Remove whitespace at top */
+    .block-container {
+        padding-top: 1rem !important;
+    }
+    </style>
+"""
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # ==========================================
@@ -118,7 +128,7 @@ def fmt_price(mmk_value):
     return f"{mmk_value/100000:,.2f}"
 
 # ==========================================
-# ၅။ SIDEBAR (Mode ပေါ်မူတည်ပြီး ပြောင်းလဲမည်)
+# ၅။ SIDEBAR
 # ==========================================
 with st.sidebar:
     if is_admin:
