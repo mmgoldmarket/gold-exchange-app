@@ -10,8 +10,8 @@ import time
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
 
-# Weight Conversion (Oz to Tical)
-CONVERSION_FACTOR = 16.329 / 31.1034768
+# ⚠️ New Formula: 16.606 Grams per Tical (Standard)
+CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
@@ -71,7 +71,6 @@ def get_chart_data_usd(symbol):
             df = pd.DataFrame(res['values'])
             df['datetime'] = pd.to_datetime(df['datetime'])
             
-            # String to Float conversion
             cols = ['open', 'high', 'low', 'close']
             df[cols] = df[cols].astype(float)
             return df
@@ -84,10 +83,11 @@ def plot_mmk_chart(df_usd, title, rate):
     if df_usd is None:
         return None
     
-    # ⚠️ Formula: (USD * Factor * Rate) / 100000 (သိန်းဂဏန်းဖွဲ့ရန်)
+    # ⚠️ Updated Formula Logic
     df_mmk = df_usd.copy()
     
     # သိန်းဂဏန်း (Lakhs) အဖြစ်ပြောင်းလဲခြင်း Factor
+    # (Weight Factor * Exchange Rate) / 100000
     factor = (CONVERSION_FACTOR * rate) / 100000
     
     df_mmk['open'] = df_mmk['open'] * factor
@@ -109,7 +109,7 @@ def plot_mmk_chart(df_usd, title, rate):
         margin=dict(l=10, r=10, t=30, b=10),
         xaxis_rangeslider_visible=False,
         template="plotly_white",
-        yaxis_tickformat=".2f" # ဒသမ ၂ နေရာပြမည် (ဥပမာ 97.50)
+        yaxis_tickformat=".2f"
     )
     return fig
 
@@ -137,7 +137,7 @@ with st.sidebar:
     new_rate = st.number_input("Exchange Rate (MMK)", value=st.session_state.usd_rate)
     if st.button("Update Rate"):
         st.session_state.usd_rate = new_rate
-        st.cache_data.clear() # Rate ပြောင်းရင် Chart ပြန်တွက်ဖို့ Cache ရှင်းမယ်
+        st.cache_data.clear()
         st.rerun()
 
 # --- HEADER ---
@@ -230,7 +230,6 @@ def show_market_section():
         with c1:
             df_gold = get_chart_data_usd("XAU/USD")
             if df_gold is not None:
-                # MMK Base Price တွက်ပြီးဆွဲမည်
                 fig_g = plot_mmk_chart(df_gold, "Gold Base Price", current_rate)
                 st.plotly_chart(fig_g, use_container_width=True, key="chart_gold")
             else:
@@ -240,7 +239,6 @@ def show_market_section():
         with c2:
             df_silver = get_chart_data_usd("XAG/USD")
             if df_silver is not None:
-                # MMK Base Price တွက်ပြီးဆွဲမည်
                 fig_s = plot_mmk_chart(df_silver, "Silver Base Price", current_rate)
                 st.plotly_chart(fig_s, use_container_width=True, key="chart_silver")
             else:
