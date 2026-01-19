@@ -4,10 +4,11 @@ import requests
 import time
 
 # ==========================================
-# ၁။ Setting
+# ၁။ Setting (အရေးကြီးဆုံးအပိုင်း)
 # ==========================================
-# အစ်ကို့မှာ ကိုယ်ပိုင် Key ရှိရင် ဒီနေရာမှာ အစားထိုးထည့်ပါ (မရှိရင် ဒါပဲထားပါ)
-API_KEY = "b005ad2097b843d59d9c44ddfd3f9038" 
+# 👉 အစ်ကို့ Dashboard က "Reveal" နှိပ်ပြီးရလာတဲ့ Key ကို ဒီမှာထည့်ပါ
+API_KEY = "YOUR_REAL_API_KEY_HERE" 
+
 CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
@@ -38,31 +39,34 @@ if 'user_messages' not in st.session_state:
     st.session_state.user_messages = []
 
 # ==========================================
-# ၃။ Price Fetching (ခွဲခြားပြီး ဆွဲယူခြင်း)
+# ၃။ Price Fetching (Batch Request for Limit Saving)
 # ==========================================
-@st.cache_data(ttl=20)
-def get_gold_price():
-    url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={API_KEY}"
+@st.cache_data(ttl=20) # 20 စက္ကန့် Cache (Limit မကျော်အောင် ထိန်းထားသည်)
+def get_all_prices():
+    # Gold နှင့် Silver ကို ကော်မာခံပြီး တစ်ခါတည်း လှမ်းယူသည် (1 Credit ပဲကုန်မယ်)
+    url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
+    
+    prices = {"XAU": 2650.00, "XAG": 31.50, "error": None}
+    
     try:
-        response = requests.get(url).json()
-        if "price" in response:
-            return float(response["price"]), None
+        response = requests.get(url)
+        data = response.json()
+        
+        # Error Checking
+        if "code" in data and data["code"] != 200:
+             prices["error"] = data.get("message", "API Limit Reached")
         else:
-            return 2650.00, response # Error message ပြန်ပို့
+            # Success Parsing (Batch Response ပုံစံ)
+            if "XAU/USD" in data:
+                prices["XAU"] = float(data["XAU/USD"]["price"])
+            
+            if "XAG/USD" in data:
+                prices["XAG"] = float(data["XAG/USD"]["price"])
+                
     except Exception as e:
-        return 2650.00, str(e)
-
-@st.cache_data(ttl=20)
-def get_silver_price():
-    url = f"https://api.twelvedata.com/price?symbol=XAG/USD&apikey={API_KEY}"
-    try:
-        response = requests.get(url).json()
-        if "price" in response:
-            return float(response["price"]), None
-        else:
-            return 31.50, response # Error message ပြန်ပို့
-    except Exception as e:
-        return 31.50, str(e)
+        prices["error"] = str(e)
+        
+    return prices
 
 def calculate_mmk(usd_price):
     return int((usd_price * CONVERSION_FACTOR) * st.session_state.usd_rate)
@@ -76,22 +80,24 @@ def fmt_price(mmk_value):
 
 with st.sidebar:
     st.header("🔧 Admin Control")
+    
+    # Refresh ခလုတ်
     if st.button("🔄 Force Refresh"):
         st.cache_data.clear()
         st.rerun()
-    
+        
     auto_refresh = st.checkbox("Running Auto Refresh (20s)", value=True)
-    
+
     st.divider()
     with st.expander("🛠 API Debugger"):
-        # Debugging အတွက် အဖြေမှန်သမျှ ထုတ်ပြမယ်
-        g_price, g_err = get_gold_price()
-        s_price, s_err = get_silver_price()
-        st.write("Gold Response:", g_price)
-        if g_err: st.error(f"Gold Error: {g_err}")
-        
-        st.write("Silver Response:", s_price)
-        if s_err: st.error(f"Silver Error: {s_err}")
+        # ဒီနေရာမှာ API က ဘာပို့လိုက်လဲ အတိအကျပြပါမယ်
+        st.write(f"Using Key: ...{API_KEY[-4:] if len(API_KEY)>4 else 'None'}")
+        data = get_all_prices()
+        if data['error']:
+            st.error(f"Error: {data['error']}")
+        else:
+            st.success("API Connected Successfully!")
+            st.json(data)
 
     st.write("---")
     st.write("Exchange Rate Setting")
@@ -103,20 +109,20 @@ with st.sidebar:
 # --- MAIN PAGE ---
 st.title("🏆 Myanmar Gold & Silver Exchange")
 
-# သီးသန့်ဆွဲယူထားသော ဈေးနှုန်းများ
-gold_usd, gold_err = get_gold_price()
-silver_usd, silver_err = get_silver_price()
+# Data ဆွဲယူခြင်း
+data = get_all_prices()
+gold_usd = data['XAU']
+silver_usd = data['XAG']
 
-# Error ရှိရင် အပေါ်မှာ Warning ပြမယ်
-if gold_err or silver_err:
-    st.warning("⚠️ Market Data Incomplete: Check Debugger in Sidebar")
+if data['error']:
+    st.warning(f"⚠️ API Error: {data['error']} (Showing Backup Prices)")
 
 gold_mmk = calculate_mmk(gold_usd)
 silver_mmk = calculate_mmk(silver_usd)
 
 col1, col2 = st.columns(2)
 
-# GOLD SECTION
+# GOLD
 with col1:
     st.subheader("🟡 Gold (ရွှေ)")
     st.metric("World Price", f"${gold_usd:,.2f}")
@@ -135,7 +141,7 @@ with col1:
         st.session_state.user_balance += sell
         st.success("Sold!")
 
-# SILVER SECTION
+# SILVER
 with col2:
     st.subheader("⚪ Silver (ငွေ)")
     st.metric("World Price", f"${silver_usd:,.3f}")
@@ -161,13 +167,19 @@ c1.metric("Balance", f"{st.session_state.user_balance:,.0f} Ks")
 c2.metric("Gold", f"{st.session_state.user_assets['Gold']} Tical")
 c3.metric("Silver", f"{st.session_state.user_assets['Silver']} Tical")
 
+# Javascript Refresh Logic (20 Seconds)
 if auto_refresh:
     components.html(
-        f"""<script>
-            var timeLeft = 20;
-            setInterval(function() {{
-                timeLeft--;
-                if (timeLeft <= 0) window.parent.location.reload();
-            }}, 1000);
-        </script>""", height=0
+        f"""
+            <script>
+                var timeLeft = 20;
+                var timer = setInterval(function() {{
+                    timeLeft--;
+                    if (timeLeft <= 0) {{
+                        window.parent.location.reload();
+                    }}
+                }}, 1000);
+            </script>
+        """,
+        height=0
     )
