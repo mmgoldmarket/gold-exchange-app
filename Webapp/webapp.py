@@ -10,6 +10,7 @@ import time
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
 
+# Weight Conversion (Oz to Tical)
 CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
@@ -41,10 +42,9 @@ if 'user_messages' not in st.session_state:
     st.session_state.user_messages = []
 
 # ==========================================
-# ၃။ Helper Functions (Price & Chart)
+# ၃။ Helper Functions
 # ==========================================
 
-# ဈေးနှုန်းသီးသန့် (မြန်မြန်ဆွဲရန်)
 def fetch_realtime_prices():
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
@@ -61,39 +61,55 @@ def fetch_realtime_prices():
     except:
         pass
 
-# Chart အတွက် Data ဆွဲရန် (Candlestick)
-@st.cache_data(ttl=60) # ၁ မိနစ်နေမှ တစ်ခါ Chart အသစ်ဆွဲမည် (API သက်သာအောင်)
-def get_chart_data(symbol):
+# Chart Data ဆွဲယူခြင်း (USD)
+@st.cache_data(ttl=60) 
+def get_chart_data_usd(symbol):
     url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&outputsize=30&apikey={API_KEY}"
     try:
         res = requests.get(url).json()
         if 'values' in res:
             df = pd.DataFrame(res['values'])
             df['datetime'] = pd.to_datetime(df['datetime'])
+            
+            # String to Float conversion
+            cols = ['open', 'high', 'low', 'close']
+            df[cols] = df[cols].astype(float)
             return df
     except:
         return None
     return None
 
-# Chart ပုံဖော်မည့် Function
-def plot_candle_chart(df, title, color_bull="#28a745", color_bear="#dc3545"):
-    if df is None:
+# Chart ပုံဖော်ခြင်း (MMK Base Price အတိုင်းတွက်မည်)
+def plot_mmk_chart(df_usd, title, rate):
+    if df_usd is None:
         return None
     
+    # ⚠️ Formula: (USD * Factor * Rate) / 100000 (သိန်းဂဏန်းဖွဲ့ရန်)
+    df_mmk = df_usd.copy()
+    
+    # သိန်းဂဏန်း (Lakhs) အဖြစ်ပြောင်းလဲခြင်း Factor
+    factor = (CONVERSION_FACTOR * rate) / 100000
+    
+    df_mmk['open'] = df_mmk['open'] * factor
+    df_mmk['high'] = df_mmk['high'] * factor
+    df_mmk['low'] = df_mmk['low'] * factor
+    df_mmk['close'] = df_mmk['close'] * factor
+    
     fig = go.Figure(data=[go.Candlestick(
-        x=df['datetime'],
-        open=df['open'], high=df['high'],
-        low=df['low'], close=df['close'],
-        increasing_line_color=color_bull, 
-        decreasing_line_color=color_bear
+        x=df_mmk['datetime'],
+        open=df_mmk['open'], high=df_mmk['high'],
+        low=df_mmk['low'], close=df_mmk['close'],
+        increasing_line_color="#28a745", 
+        decreasing_line_color="#dc3545"
     )])
     
     fig.update_layout(
-        title=title,
+        title=f"{title} (Base Price - Lakhs)",
         height=350,
         margin=dict(l=10, r=10, t=30, b=10),
         xaxis_rangeslider_visible=False,
-        template="plotly_white"
+        template="plotly_white",
+        yaxis_tickformat=".2f" # ဒသမ ၂ နေရာပြမည် (ဥပမာ 97.50)
     )
     return fig
 
@@ -121,6 +137,7 @@ with st.sidebar:
     new_rate = st.number_input("Exchange Rate (MMK)", value=st.session_state.usd_rate)
     if st.button("Update Rate"):
         st.session_state.usd_rate = new_rate
+        st.cache_data.clear() # Rate ပြောင်းရင် Chart ပြန်တွက်ဖို့ Cache ရှင်းမယ်
         st.rerun()
 
 # --- HEADER ---
@@ -140,10 +157,10 @@ def show_market_section():
     gold_mmk = calculate_mmk(gold_usd)
     silver_mmk = calculate_mmk(silver_usd)
     
-    # --- TABS (Chart & Price ခွဲပြမည်) ---
-    tab1, tab2 = st.tabs(["📊 Market Overview", "📈 Charts (Live)"])
+    # --- TABS ---
+    tab1, tab2 = st.tabs(["📊 Market Overview", "📈 Live Charts (Base Price)"])
     
-    # TAB 1: အရောင်းအဝယ် ခလုတ်များ
+    # TAB 1: Trading Buttons
     with tab1:
         col1, col2 = st.columns(2)
 
@@ -151,7 +168,7 @@ def show_market_section():
         with col1:
             st.subheader("🟡 Gold (ရွှေ)")
             st.metric(label="World Price", value=f"${gold_usd:,.2f}")
-            st.info(f"**Base:** {fmt_price(gold_mmk)}")
+            st.info(f"**Base:** {fmt_price(gold_mmk)} (Lakhs)")
             
             buy = gold_mmk + GOLD_SPREAD
             sell = gold_mmk - GOLD_SPREAD
@@ -179,7 +196,7 @@ def show_market_section():
         with col2:
             st.subheader("⚪ Silver (ငွေ)")
             st.metric(label="World Price", value=f"${silver_usd:,.3f}")
-            st.info(f"**Base:** {fmt_price(silver_mmk)}")
+            st.info(f"**Base:** {fmt_price(silver_mmk)} (Lakhs)")
             
             buy_s = silver_mmk + SILVER_SPREAD
             sell_s = silver_mmk - SILVER_SPREAD
@@ -203,25 +220,28 @@ def show_market_section():
                 else:
                     st.error("No Silver!")
 
-    # TAB 2: Candlestick Charts
+    # TAB 2: MMK Charts
     with tab2:
-        st.caption("Charts update every 1 minute")
+        st.caption(f"Charts showing Base Price in MMK (Lakhs) @ Rate: {st.session_state.usd_rate}")
         c1, c2 = st.columns(2)
+        current_rate = st.session_state.usd_rate
         
         # Gold Chart
         with c1:
-            df_gold = get_chart_data("XAU/USD")
+            df_gold = get_chart_data_usd("XAU/USD")
             if df_gold is not None:
-                fig_g = plot_candle_chart(df_gold, "Gold (XAU/USD)")
+                # MMK Base Price တွက်ပြီးဆွဲမည်
+                fig_g = plot_mmk_chart(df_gold, "Gold Base Price", current_rate)
                 st.plotly_chart(fig_g, use_container_width=True, key="chart_gold")
             else:
                 st.warning("Loading Gold Chart...")
 
         # Silver Chart
         with c2:
-            df_silver = get_chart_data("XAG/USD")
+            df_silver = get_chart_data_usd("XAG/USD")
             if df_silver is not None:
-                fig_s = plot_candle_chart(df_silver, "Silver (XAG/USD)")
+                # MMK Base Price တွက်ပြီးဆွဲမည်
+                fig_s = plot_mmk_chart(df_silver, "Silver Base Price", current_rate)
                 st.plotly_chart(fig_s, use_container_width=True, key="chart_silver")
             else:
                 st.warning("Loading Silver Chart...")
