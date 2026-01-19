@@ -183,4 +183,3 @@ if auto_refresh:
         """,
         height=0
     )
-
