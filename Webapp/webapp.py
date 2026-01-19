@@ -20,7 +20,7 @@ st.set_page_config(page_title="Gold Exchange", layout="wide", initial_sidebar_st
 # 🛑 UI CLEANER (Fixed Version)
 # ==========================================
 # Sidebar ခလုတ်မပျောက်အောင် Header ကို မဖျောက်ဘဲ Footer ကိုပဲ ဖျောက်ပါမည်
-hide_streamlit_style = """
+# hide_streamlit_style = """
     <style>
     /* Footer (Manage App) ကို ဖျောက်ခြင်း */
     footer {display: none !important;}
@@ -287,3 +287,4 @@ components.html("""
     }, 500); 
 </script>
 """, height=0)
+
