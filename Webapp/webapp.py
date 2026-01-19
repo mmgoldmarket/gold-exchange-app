@@ -7,7 +7,7 @@ import time
 # ၁။ Setting (အရေးကြီးဆုံးအပိုင်း)
 # ==========================================
 # 👉 အစ်ကို့ Dashboard က "Reveal" နှိပ်ပြီးရလာတဲ့ Key ကို ဒီမှာထည့်ပါ
-API_KEY = "YOUR_REAL_API_KEY_HERE" 
+API_KEY = "b005ad2097b843d59d9c44ddfd3f9038" 
 
 CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
@@ -183,3 +183,4 @@ if auto_refresh:
         """,
         height=0
     )
+
