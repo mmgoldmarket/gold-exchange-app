@@ -6,7 +6,7 @@ import time
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ
+# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ (Free Key ဆိုရင် 2s refresh နဲ့ မခံပါ)
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  
 
 CONVERSION_FACTOR = 16.329 / 31.1034768
@@ -44,9 +44,10 @@ if 'user_messages' not in st.session_state:
 # ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
+    # Timeout ကို 2s ထားလိုက်မယ် (အင်တာနက်နည်းနည်းကြာရင် ကျော်ချသွားအောင်)
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, timeout=2) 
         data = response.json()
         
         if "code" in data and data["code"] != 200:
@@ -114,14 +115,15 @@ if st.session_state.user_messages:
             st.info(f"**Admin ({msg['time']}):** {msg['text']}")
 
 # ==========================================
-# ၅။ Market Display Fragment (Smooth Refresh)
+# ၅။ Market Display Fragment (2 Seconds Refresh)
 # ==========================================
-@st.fragment(run_every=5)
+# run_every=2 (၂ စက္ကန့်တစ်ခါ အလိုအလျောက် အလုပ်လုပ်မည်)
+@st.fragment(run_every=2)
 def show_market_section():
     # 1. Fetch New Data
     fetch_realtime_prices()
     
-    # 2. Get Data
+    # 2. Get Data (No Offset)
     gold_usd = st.session_state.last_gold_price
     silver_usd = st.session_state.last_silver_price
     
@@ -140,7 +142,6 @@ def show_market_section():
         sell_price = gold_mmk - GOLD_SPREAD
         
         b_col, s_col = st.columns(2)
-        # Note: Keys must be unique for fragment to work well
         if b_col.button(f"Buy Gold\n{fmt_price(buy_price)}", key="bg", use_container_width=True):
             if st.session_state.user_balance >= buy_price:
                 st.session_state.user_balance -= buy_price
@@ -201,25 +202,20 @@ w_col1.metric("Cash Balance", f"{st.session_state.user_balance:,.0f} Ks")
 w_col2.metric("Gold Assets", f"{st.session_state.user_assets['Gold']:.2f} Tical")
 w_col3.metric("Silver Assets", f"{st.session_state.user_assets['Silver']:.2f} Tical")
 
-# --- CSS/JS Injection for Button Colors ---
-# ဒီအပိုင်းက ခလုတ်တွေကို အရောင်လိုက်ရှာပြီး ချယ်ပေးပါမယ်
+# Styling Script
 components.html("""
 <script>
-    // 500ms (0.5 စက္ကန့်) တစ်ခါ ခလုတ်တွေကို လိုက်စစ်ပြီး အရောင်ပြောင်းမယ်
     setInterval(function() {
         var buttons = window.parent.document.querySelectorAll('button');
         for (var i = 0; i < buttons.length; i++) {
             var text = buttons[i].innerText;
-            
-            // Buy ပါရင် အစိမ်းရောင်ပြောင်းမယ်
             if (text.includes("Buy")) {
-                buttons[i].style.backgroundColor = "#28a745"; // Green
+                buttons[i].style.backgroundColor = "#28a745"; 
                 buttons[i].style.color = "white";
                 buttons[i].style.borderColor = "#28a745";
             }
-            // Sell ပါရင် အနီရောင်ပြောင်းမယ်
             else if (text.includes("Sell")) {
-                buttons[i].style.backgroundColor = "#dc3545"; // Red
+                buttons[i].style.backgroundColor = "#dc3545"; 
                 buttons[i].style.color = "white";
                 buttons[i].style.borderColor = "#dc3545";
             }
