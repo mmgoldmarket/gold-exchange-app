@@ -8,7 +8,7 @@ import time
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ထည့်ရန်
+API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
 CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
@@ -16,9 +16,22 @@ SILVER_SPREAD = 1000
 st.set_page_config(page_title="Gold Exchange", layout="wide")
 
 # ==========================================
+# 🛑 UI CLEANER (Tools များကို ဖျောက်မည့်နေရာ)
+# ==========================================
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            .stAppDeployButton {display: none;}
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# ==========================================
 # ၂။ Admin/User Mode Checking
 # ==========================================
-# URL မှာ ?view=admin ပါမှ Admin Panel ပေါ်မယ်။ မပါရင် User Mode။
 query_params = st.query_params
 is_admin = query_params.get("view") == "admin"
 
@@ -108,10 +121,9 @@ def fmt_price(mmk_value):
 # ၅။ SIDEBAR (Mode ပေါ်မူတည်ပြီး ပြောင်းလဲမည်)
 # ==========================================
 with st.sidebar:
-    # --- ADMIN MODE ---
     if is_admin:
         st.header("🔧 Admin Panel")
-        st.success("You are in Admin Mode")
+        st.success("Mode: Admin")
         
         status_color = "green" if "Live" in st.session_state.price_status else "red"
         st.markdown(f"API Status: :{status_color}[{st.session_state.price_status}]")
@@ -141,13 +153,11 @@ with st.sidebar:
                         st.rerun()
                         
         st.divider()
-        st.write("🔗 **User Link (For Customers):**")
-        st.info("Copy the URL from browser and REMOVE '?view=admin'")
+        st.write("🔗 **User Link:** Copy URL & remove `?view=admin`")
 
-    # --- USER MODE ---
     else:
         st.header("👋 Welcome User")
-        st.info("To Deposit: Please contact Admin via Chat or Phone.")
+        st.info("To Deposit: Please contact Admin.")
         st.write("---")
         st.write("**Customer Support:**")
         st.write("📞 09-xxxxxxxxx")
