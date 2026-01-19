@@ -15,7 +15,7 @@ SILVER_SPREAD = 1000
 st.set_page_config(page_title="Gold Exchange Admin", layout="wide")
 
 # ==========================================
-# ၂။ Javascript Injection (ခလုတ်အရောင်)
+# ၂။ Javascript Injection (Button Colors)
 # ==========================================
 components.html("""
 <script>
@@ -63,32 +63,32 @@ if 'user_messages' not in st.session_state:
     st.session_state.user_messages = []
 
 # ==========================================
-# ၄။ တွက်ချက်ရေး Function များ (Updated with Caching)
+# ၄။ တွက်ချက်ရေး Function များ (API Fix)
 # ==========================================
 
-# NOTE: ttl=15 ဆိုတာ ၁၅ စက္ကန့်အတွင်း API ကို ထပ်မခေါ်ဘဲ အဟောင်းကိုပဲ ပြမယ်လို့ ဆိုလိုတာပါ
-# ဒါမှ Limit မကျော်ဘဲ ငွေဈေးပါ ပေါ်မှာပါ
+# NOTE: ၁၅ စက္ကန့် Cache ထားတဲ့အတွက် API Limit မကျော်ပါ
 @st.cache_data(ttl=15)
 def get_cached_prices():
     td = TDClient(apikey=API_KEY)
-    prices = {"XAU": 2650.50, "XAG": 90.119} # Fallback defaults
+    # Default တန်ဖိုးများကို လက်ရှိဈေးအမှန်နှင့် နီးစပ်အောင် ပြင်ထားသည် (Error တက်လျှင် ဒီဈေးပြမည်)
+    prices = {"XAU": 2650.00, "XAG": 31.50} 
     
     try:
-        # ရွှေရော ငွေရော တစ်ခါတည်း လှမ်းယူမယ်
-        ts = td.time_series(
-            symbol="XAU/USD,XAG/USD",
-            interval="1min",
-            outputsize=1
-        ).as_json()
+        # Time Series မဟုတ်ဘဲ Price (Real-time) ကို တိုက်ရိုက်ခေါ်ပါမည်
+        # Batch Request: Gold ရော Silver ပါ တစ်ခါတည်းခေါ်သည်
+        res = td.price(symbol="XAU/USD,XAG/USD").as_json()
         
-        # Data ခွဲထုတ်ခြင်း
-        if 'XAU/USD' in ts:
-            prices["XAU"] = float(ts['XAU/USD'][0]['close'])
-        if 'XAG/USD' in ts:
-            prices["XAG"] = float(ts['XAG/USD'][0]['close'])
+        # Result စစ်ဆေးခြင်း
+        # Gold Parsing
+        if 'XAU/USD' in res:
+            prices["XAU"] = float(res['XAU/USD']['price'])
+        
+        # Silver Parsing
+        if 'XAG/USD' in res:
+            prices["XAG"] = float(res['XAG/USD']['price'])
             
     except Exception as e:
-        # Error တက်ရင် ဘာမှမလုပ်ဘဲ Default သို့မဟုတ် Cached old value ကိုပဲ သုံးမယ်
+        print(f"API Error: {e}") # Console မှာ Error ပြခိုင်းသည်
         pass
         
     return prices
@@ -104,7 +104,7 @@ def fmt_price(mmk_value):
 # ၅။ Website UI
 # ==========================================
 
-# --- SIDEBAR (Admin Panel) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.header("🔧 Admin Control")
     
@@ -112,7 +112,7 @@ with st.sidebar:
     auto_refresh = st.checkbox("🔄 Auto Refresh Market (Every 15s)", value=True)
 
     if st.button("Manual Refresh"):
-        st.cache_data.clear() # Clear cache to force new data
+        st.cache_data.clear() 
         st.rerun()
 
     st.write("---")
@@ -253,5 +253,5 @@ with st.expander("View Recent Transactions"):
 
 # --- AUTO REFRESH LOGIC ---
 if auto_refresh:
-    time.sleep(15) # Wait 15 seconds
-    st.rerun() # Refresh page automatically
+    time.sleep(15) 
+    st.rerun()
