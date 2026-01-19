@@ -6,7 +6,7 @@ import time
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ (Free Key ဆိုရင် 2s refresh နဲ့ မခံပါ)
+# ⚠️ Plan ဝယ်ထားသော Key ကိုသာ ထည့်ပါ
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  
 
 CONVERSION_FACTOR = 16.329 / 31.1034768
@@ -44,7 +44,7 @@ if 'user_messages' not in st.session_state:
 # ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
-    # Timeout ကို 2s ထားလိုက်မယ် (အင်တာနက်နည်းနည်းကြာရင် ကျော်ချသွားအောင်)
+    # Timeout 2s ထားတာက 3s refresh အတွက် Safe ဖြစ်ပါတယ်
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
         response = requests.get(url, timeout=2) 
@@ -115,15 +115,15 @@ if st.session_state.user_messages:
             st.info(f"**Admin ({msg['time']}):** {msg['text']}")
 
 # ==========================================
-# ၅။ Market Display Fragment (2 Seconds Refresh)
+# ၅။ Market Display Fragment (3 Seconds Refresh)
 # ==========================================
-# run_every=2 (၂ စက္ကန့်တစ်ခါ အလိုအလျောက် အလုပ်လုပ်မည်)
-@st.fragment(run_every=2)
+# run_every=3 (၃ စက္ကန့်တစ်ခါ အလုပ်လုပ်ပါမည်)
+@st.fragment(run_every=3)
 def show_market_section():
     # 1. Fetch New Data
     fetch_realtime_prices()
     
-    # 2. Get Data (No Offset)
+    # 2. Get Data
     gold_usd = st.session_state.last_gold_price
     silver_usd = st.session_state.last_silver_price
     
