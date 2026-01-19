@@ -8,17 +8,22 @@ import time
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
-
-# ⚠️ New Formula: 16.606 Grams per Tical (Standard)
+API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ထည့်ရန်
 CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
-st.set_page_config(page_title="Gold Exchange Admin", layout="wide")
+st.set_page_config(page_title="Gold Exchange", layout="wide")
 
 # ==========================================
-# ၂။ Session State Initialization
+# ၂။ Admin/User Mode Checking
+# ==========================================
+# URL မှာ ?view=admin ပါမှ Admin Panel ပေါ်မယ်။ မပါရင် User Mode။
+query_params = st.query_params
+is_admin = query_params.get("view") == "admin"
+
+# ==========================================
+# ၃။ Session State Initialization
 # ==========================================
 if 'last_gold_price' not in st.session_state:
     st.session_state.last_gold_price = 2650.00
@@ -34,7 +39,7 @@ if 'user_assets' not in st.session_state:
     st.session_state.user_assets = {"Gold": 0.0, "Silver": 0.0}
 if 'deposit_requests' not in st.session_state:
     st.session_state.deposit_requests = [
-        {"id": 1, "user": "Mg Mg", "amount": 1000000, "status": "Pending"},
+        {"id": 1, "user": "Demo User", "amount": 1000000, "status": "Pending"},
     ]
 if 'transaction_history' not in st.session_state:
     st.session_state.transaction_history = []
@@ -42,9 +47,8 @@ if 'user_messages' not in st.session_state:
     st.session_state.user_messages = []
 
 # ==========================================
-# ၃။ Helper Functions
+# ၄။ Helper Functions
 # ==========================================
-
 def fetch_realtime_prices():
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
@@ -61,7 +65,6 @@ def fetch_realtime_prices():
     except:
         pass
 
-# Chart Data ဆွဲယူခြင်း (USD)
 @st.cache_data(ttl=60) 
 def get_chart_data_usd(symbol):
     url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&outputsize=30&apikey={API_KEY}"
@@ -70,7 +73,6 @@ def get_chart_data_usd(symbol):
         if 'values' in res:
             df = pd.DataFrame(res['values'])
             df['datetime'] = pd.to_datetime(df['datetime'])
-            
             cols = ['open', 'high', 'low', 'close']
             df[cols] = df[cols].astype(float)
             return df
@@ -78,18 +80,10 @@ def get_chart_data_usd(symbol):
         return None
     return None
 
-# Chart ပုံဖော်ခြင်း (MMK Base Price အတိုင်းတွက်မည်)
 def plot_mmk_chart(df_usd, title, rate):
-    if df_usd is None:
-        return None
-    
-    # ⚠️ Updated Formula Logic
+    if df_usd is None: return None
     df_mmk = df_usd.copy()
-    
-    # သိန်းဂဏန်း (Lakhs) အဖြစ်ပြောင်းလဲခြင်း Factor
-    # (Weight Factor * Exchange Rate) / 100000
     factor = (CONVERSION_FACTOR * rate) / 100000
-    
     df_mmk['open'] = df_mmk['open'] * factor
     df_mmk['high'] = df_mmk['high'] * factor
     df_mmk['low'] = df_mmk['low'] * factor
@@ -99,18 +93,9 @@ def plot_mmk_chart(df_usd, title, rate):
         x=df_mmk['datetime'],
         open=df_mmk['open'], high=df_mmk['high'],
         low=df_mmk['low'], close=df_mmk['close'],
-        increasing_line_color="#28a745", 
-        decreasing_line_color="#dc3545"
+        increasing_line_color="#28a745", decreasing_line_color="#dc3545"
     )])
-    
-    fig.update_layout(
-        title=f"{title} (Base Price - Lakhs)",
-        height=350,
-        margin=dict(l=10, r=10, t=30, b=10),
-        xaxis_rangeslider_visible=False,
-        template="plotly_white",
-        yaxis_tickformat=".2f"
-    )
+    fig.update_layout(title=f"{title} (Base Price - Lakhs)", height=350, margin=dict(l=10, r=10, t=30, b=10), xaxis_rangeslider_visible=False, template="plotly_white", yaxis_tickformat=".2f")
     return fig
 
 def calculate_mmk(usd_price):
@@ -120,59 +105,79 @@ def fmt_price(mmk_value):
     return f"{mmk_value/100000:,.2f}"
 
 # ==========================================
-# ၄။ MAIN UI
+# ၅။ SIDEBAR (Mode ပေါ်မူတည်ပြီး ပြောင်းလဲမည်)
 # ==========================================
-
-# --- SIDEBAR ---
 with st.sidebar:
-    st.header("🔧 Admin Control")
-    status_color = "green" if "Live" in st.session_state.price_status else "red"
-    st.markdown(f"Status: :{status_color}[{st.session_state.price_status}]")
-    
-    if st.button("Manual Page Reload"):
-        st.rerun()
+    # --- ADMIN MODE ---
+    if is_admin:
+        st.header("🔧 Admin Panel")
+        st.success("You are in Admin Mode")
+        
+        status_color = "green" if "Live" in st.session_state.price_status else "red"
+        st.markdown(f"API Status: :{status_color}[{st.session_state.price_status}]")
+        
+        if st.button("Refresh Page"):
+            st.rerun()
 
-    st.divider()
-    st.write("Rate Setting")
-    new_rate = st.number_input("Exchange Rate (MMK)", value=st.session_state.usd_rate)
-    if st.button("Update Rate"):
-        st.session_state.usd_rate = new_rate
-        st.cache_data.clear()
-        st.rerun()
+        st.divider()
+        st.write("Exchange Rate Setting")
+        new_rate = st.number_input("Exchange Rate (MMK)", value=st.session_state.usd_rate)
+        if st.button("Update Rate"):
+            st.session_state.usd_rate = new_rate
+            st.cache_data.clear()
+            st.rerun()
+            
+        st.divider()
+        st.subheader("💰 Deposit Requests")
+        pending_list = [d for d in st.session_state.deposit_requests if d['status'] == "Pending"]
+        if not pending_list:
+            st.info("No pending requests.")
+        else:
+            for req in pending_list:
+                with st.expander(f"{req['user']} : {req['amount']:,} Ks"):
+                    if st.button("✅ Approve", key=f"app_{req['id']}"):
+                        req['status'] = "Approved"
+                        st.session_state.user_balance += req['amount']
+                        st.rerun()
+                        
+        st.divider()
+        st.write("🔗 **User Link (For Customers):**")
+        st.info("Copy the URL from browser and REMOVE '?view=admin'")
 
-# --- HEADER ---
+    # --- USER MODE ---
+    else:
+        st.header("👋 Welcome User")
+        st.info("To Deposit: Please contact Admin via Chat or Phone.")
+        st.write("---")
+        st.write("**Customer Support:**")
+        st.write("📞 09-xxxxxxxxx")
+        st.write("💬 Viber / Telegram")
+
+# ==========================================
+# ၆။ MAIN PAGE
+# ==========================================
 st.title("🏆 Myanmar Gold & Silver Exchange")
 st.write(f"**Exchange Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
 
-# ==========================================
-# ၅။ Market Display Fragment (3s Refresh)
-# ==========================================
 @st.fragment(run_every=3)
 def show_market_section():
     fetch_realtime_prices()
-    
     gold_usd = st.session_state.last_gold_price
     silver_usd = st.session_state.last_silver_price
-    
     gold_mmk = calculate_mmk(gold_usd)
     silver_mmk = calculate_mmk(silver_usd)
     
-    # --- TABS ---
     tab1, tab2 = st.tabs(["📊 Market Overview", "📈 Live Charts (Base Price)"])
     
-    # TAB 1: Trading Buttons
     with tab1:
         col1, col2 = st.columns(2)
-
         # GOLD
         with col1:
             st.subheader("🟡 Gold (ရွှေ)")
             st.metric(label="World Price", value=f"${gold_usd:,.2f}")
             st.info(f"**Base:** {fmt_price(gold_mmk)} (Lakhs)")
-            
             buy = gold_mmk + GOLD_SPREAD
             sell = gold_mmk - GOLD_SPREAD
-            
             b, s = st.columns(2)
             if b.button(f"Buy Gold\n{fmt_price(buy)}", key="bg", use_container_width=True):
                 if st.session_state.user_balance >= buy:
@@ -182,7 +187,6 @@ def show_market_section():
                     st.success("Bought!")
                 else:
                     st.error("Low Balance!")
-
             if s.button(f"Sell Gold\n{fmt_price(sell)}", key="sg", use_container_width=True):
                 if st.session_state.user_assets["Gold"] >= 1.0:
                     st.session_state.user_balance += sell
@@ -197,10 +201,8 @@ def show_market_section():
             st.subheader("⚪ Silver (ငွေ)")
             st.metric(label="World Price", value=f"${silver_usd:,.3f}")
             st.info(f"**Base:** {fmt_price(silver_mmk)} (Lakhs)")
-            
             buy_s = silver_mmk + SILVER_SPREAD
             sell_s = silver_mmk - SILVER_SPREAD
-            
             b, s = st.columns(2)
             if b.button(f"Buy Silver\n{fmt_price(buy_s)}", key="bs", use_container_width=True):
                 if st.session_state.user_balance >= buy_s:
@@ -210,7 +212,6 @@ def show_market_section():
                     st.success("Bought!")
                 else:
                     st.error("Low Balance!")
-
             if s.button(f"Sell Silver\n{fmt_price(sell_s)}", key="ss", use_container_width=True):
                 if st.session_state.user_assets["Silver"] >= 1.0:
                     st.session_state.user_balance += sell_s
@@ -220,13 +221,10 @@ def show_market_section():
                 else:
                     st.error("No Silver!")
 
-    # TAB 2: MMK Charts
     with tab2:
         st.caption(f"Charts showing Base Price in MMK (Lakhs) @ Rate: {st.session_state.usd_rate}")
         c1, c2 = st.columns(2)
         current_rate = st.session_state.usd_rate
-        
-        # Gold Chart
         with c1:
             df_gold = get_chart_data_usd("XAU/USD")
             if df_gold is not None:
@@ -234,8 +232,6 @@ def show_market_section():
                 st.plotly_chart(fig_g, use_container_width=True, key="chart_gold")
             else:
                 st.warning("Loading Gold Chart...")
-
-        # Silver Chart
         with c2:
             df_silver = get_chart_data_usd("XAG/USD")
             if df_silver is not None:
@@ -246,9 +242,6 @@ def show_market_section():
 
 show_market_section()
 
-# ==========================================
-# ၆။ Wallet & Styles
-# ==========================================
 st.divider()
 st.subheader("👤 My Wallet")
 w1, w2, w3 = st.columns(3)
