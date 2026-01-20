@@ -38,17 +38,15 @@ if 'last_silver_price' not in st.session_state:
 if 'price_status' not in st.session_state:
     st.session_state.price_status = "Init"
 
-# Default Rate
 if 'usd_rate' not in st.session_state:
     st.session_state.usd_rate = 4000.0 
 
-# Wallet & Positions
 if 'user_balance' not in st.session_state:
     st.session_state.user_balance = 0.0
 if 'spot_assets' not in st.session_state:
     st.session_state.spot_assets = {"Gold": 0.0, "Silver": 0.0}
 if 'future_positions' not in st.session_state:
-    st.session_state.future_positions = []  # Future အရောင်းအဝယ် စာရင်း
+    st.session_state.future_positions = []  
 
 if 'deposit_requests' not in st.session_state:
     st.session_state.deposit_requests = [
@@ -126,11 +124,11 @@ silver_usd = st.session_state.last_silver_price
 gold_mmk = calculate_mmk(gold_usd)
 silver_mmk = calculate_mmk(silver_usd)
 
-# 🟢 MAIN TABS (Spot vs Future)
+# 🟢 MAIN TABS
 main_tab1, main_tab2 = st.tabs(["Store (Spot Market)", "Trading (Future Market)"])
 
 # ------------------------------------------
-# TAB 1: SPOT MARKET (Physical Logic)
+# TAB 1: SPOT MARKET
 # ------------------------------------------
 with main_tab1:
     st.subheader("📦 Spot Market (Physical Asset)")
@@ -138,24 +136,25 @@ with main_tab1:
     
     # Gold Spot
     with c1:
+        st.metric(label="World Price", value=f"${gold_usd:,.2f}") # ✅ Added World Price
         st.info(f"**Gold Base:** {fmt_price(gold_mmk)} Lakhs")
-        buy = gold_mmk + GOLD_SPREAD
-        sell = gold_mmk - GOLD_SPREAD
-        if st.button(f"Buy Gold\n{fmt_price(buy)}", key="s_bg", use_container_width=True):
-            if st.session_state.user_balance >= buy:
-                st.session_state.user_balance -= buy
+        spot_buy_g = gold_mmk + GOLD_SPREAD
+        spot_sell_g = gold_mmk - GOLD_SPREAD
+        if st.button(f"Buy Gold\n{fmt_price(spot_buy_g)}", key="s_bg", use_container_width=True):
+            if st.session_state.user_balance >= spot_buy_g:
+                st.session_state.user_balance -= spot_buy_g
                 st.session_state.spot_assets["Gold"] += 1.0
-                st.session_state.transaction_history.append(f"Spot: Bought Gold @ {fmt_price(buy)}")
+                st.session_state.transaction_history.append(f"Spot: Bought Gold @ {fmt_price(spot_buy_g)}")
                 st.success("Bought!")
                 time.sleep(1)
                 st.rerun()
             else:
                 st.error("Low Balance!")
-        if st.button(f"Sell Gold\n{fmt_price(sell)}", key="s_sg", use_container_width=True):
+        if st.button(f"Sell Gold\n{fmt_price(spot_sell_g)}", key="s_sg", use_container_width=True):
             if st.session_state.spot_assets["Gold"] >= 1.0:
-                st.session_state.user_balance += sell
+                st.session_state.user_balance += spot_sell_g
                 st.session_state.spot_assets["Gold"] -= 1.0
-                st.session_state.transaction_history.append(f"Spot: Sold Gold @ {fmt_price(sell)}")
+                st.session_state.transaction_history.append(f"Spot: Sold Gold @ {fmt_price(spot_sell_g)}")
                 st.success("Sold!")
                 time.sleep(1)
                 st.rerun()
@@ -164,24 +163,25 @@ with main_tab1:
 
     # Silver Spot
     with c2:
+        st.metric(label="World Price", value=f"${silver_usd:,.3f}") # ✅ Added World Price
         st.info(f"**Silver Base:** {fmt_price(silver_mmk)} Lakhs")
-        buy_s = silver_mmk + SILVER_SPREAD
-        sell_s = silver_mmk - SILVER_SPREAD
-        if st.button(f"Buy Silver\n{fmt_price(buy_s)}", key="s_bs", use_container_width=True):
-            if st.session_state.user_balance >= buy_s:
-                st.session_state.user_balance -= buy_s
+        spot_buy_s = silver_mmk + SILVER_SPREAD
+        spot_sell_s = silver_mmk - SILVER_SPREAD
+        if st.button(f"Buy Silver\n{fmt_price(spot_buy_s)}", key="s_bs", use_container_width=True):
+            if st.session_state.user_balance >= spot_buy_s:
+                st.session_state.user_balance -= spot_buy_s
                 st.session_state.spot_assets["Silver"] += 1.0
-                st.session_state.transaction_history.append(f"Spot: Bought Silver @ {fmt_price(buy_s)}")
+                st.session_state.transaction_history.append(f"Spot: Bought Silver @ {fmt_price(spot_buy_s)}")
                 st.success("Bought!")
                 time.sleep(1)
                 st.rerun()
             else:
                 st.error("Low Balance!")
-        if st.button(f"Sell Silver\n{fmt_price(sell_s)}", key="s_ss", use_container_width=True):
+        if st.button(f"Sell Silver\n{fmt_price(spot_sell_s)}", key="s_ss", use_container_width=True):
             if st.session_state.spot_assets["Silver"] >= 1.0:
-                st.session_state.user_balance += sell_s
+                st.session_state.user_balance += spot_sell_s
                 st.session_state.spot_assets["Silver"] -= 1.0
-                st.session_state.transaction_history.append(f"Spot: Sold Silver @ {fmt_price(sell_s)}")
+                st.session_state.transaction_history.append(f"Spot: Sold Silver @ {fmt_price(spot_sell_s)}")
                 st.success("Sold!")
                 time.sleep(1)
                 st.rerun()
@@ -189,51 +189,90 @@ with main_tab1:
                 st.error("No Silver!")
 
 # ------------------------------------------
-# TAB 2: FUTURE MARKET (Trading Logic)
+# TAB 2: FUTURE MARKET (With Spread)
 # ------------------------------------------
 with main_tab2:
-    st.subheader("📈 Future Market (Paper Trading)")
-    st.caption("Trading on Price Difference (CFD Style) - No Physical Delivery")
+    st.subheader("📈 Future Market (With Spread)")
     
     fc1, fc2 = st.columns(2)
+    
+    # --- GOLD FUTURE ---
     with fc1:
         st.markdown(f"### 🟡 Gold Future")
-        st.metric("Market Price", f"{fmt_price(gold_mmk)}")
-        # Future Logic: Buy/Sell creates a "Position"
-        if st.button("Open LONG (Buy)", key="f_buy_g", use_container_width=True):
-             st.session_state.future_positions.append({"type": "Long", "symbol": "Gold", "entry": gold_mmk, "size": 1})
+        # Spread Calculation
+        future_buy_g = gold_mmk + GOLD_SPREAD  
+        future_sell_g = gold_mmk - GOLD_SPREAD 
+        
+        st.metric(label="World Price", value=f"${gold_usd:,.2f}") # ✅ Added World Price
+        st.caption(f"Base Price: {fmt_price(gold_mmk)} Lakhs")
+        
+        if st.button(f"LONG (Buy)\n{fmt_price(future_buy_g)}", key="f_long_g", use_container_width=True):
+             st.session_state.future_positions.append({
+                 "type": "Long", "symbol": "Gold", "entry": future_buy_g, "size": 1
+             })
              st.success("Opened Long Position")
              
-        if st.button("Open SHORT (Sell)", key="f_sell_g", use_container_width=True):
-             st.session_state.future_positions.append({"type": "Short", "symbol": "Gold", "entry": gold_mmk, "size": 1})
+        if st.button(f"SHORT (Sell)\n{fmt_price(future_sell_g)}", key="f_short_g", use_container_width=True):
+             st.session_state.future_positions.append({
+                 "type": "Short", "symbol": "Gold", "entry": future_sell_g, "size": 1
+             })
              st.success("Opened Short Position")
 
+    # --- SILVER FUTURE ---
     with fc2:
         st.markdown(f"### ⚪ Silver Future")
-        st.metric("Market Price", f"{fmt_price(silver_mmk)}")
-        if st.button("Open LONG (Buy)", key="f_buy_s", use_container_width=True):
-             st.session_state.future_positions.append({"type": "Long", "symbol": "Silver", "entry": silver_mmk, "size": 1})
+        # Spread Calculation
+        future_buy_s = silver_mmk + SILVER_SPREAD
+        future_sell_s = silver_mmk - SILVER_SPREAD
+        
+        st.metric(label="World Price", value=f"${silver_usd:,.3f}") # ✅ Added World Price
+        st.caption(f"Base Price: {fmt_price(silver_mmk)} Lakhs")
+        
+        if st.button(f"LONG (Buy)\n{fmt_price(future_buy_s)}", key="f_long_s", use_container_width=True):
+             st.session_state.future_positions.append({
+                 "type": "Long", "symbol": "Silver", "entry": future_buy_s, "size": 1
+             })
              st.success("Opened Long Position")
              
-        if st.button("Open SHORT (Sell)", key="f_sell_s", use_container_width=True):
-             st.session_state.future_positions.append({"type": "Short", "symbol": "Silver", "entry": silver_mmk, "size": 1})
+        if st.button(f"SHORT (Sell)\n{fmt_price(future_sell_s)}", key="f_short_s", use_container_width=True):
+             st.session_state.future_positions.append({
+                 "type": "Short", "symbol": "Silver", "entry": future_sell_s, "size": 1
+             })
              st.success("Opened Short Position")
     
     st.divider()
     st.write("🔴 **Open Positions**")
+    
     if st.session_state.future_positions:
         for i, pos in enumerate(st.session_state.future_positions):
-            current_price = gold_mmk if pos['symbol'] == "Gold" else silver_mmk
+            # Calculate Current Market Values based on Spread
+            if pos['symbol'] == "Gold":
+                current_base = gold_mmk
+                market_spread = GOLD_SPREAD
+            else:
+                current_base = silver_mmk
+                market_spread = SILVER_SPREAD
+            
+            # Closing Prices (Exit Logic)
+            exit_price_long = current_base - market_spread
+            exit_price_short = current_base + market_spread
+            
             # P/L Logic
             if pos['type'] == "Long":
-                pnl = current_price - pos['entry']
+                pnl = exit_price_long - pos['entry']
+                exit_price = exit_price_long
             else:
-                pnl = pos['entry'] - current_price
+                pnl = pos['entry'] - exit_price_short
+                exit_price = exit_price_short
             
+            # Display Row
             c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
-            c1.write(f"{pos['symbol']} ({pos['type']})")
+            c1.write(f"**{pos['symbol']} {pos['type']}**")
             c2.write(f"Entry: {fmt_price(pos['entry'])}")
-            c3.write(f"P/L: {pnl:,.0f} Ks")
+            
+            pnl_color = "green" if pnl >= 0 else "red"
+            c3.markdown(f"P/L: :{pnl_color}[{pnl:,.0f} Ks]")
+            
             if c4.button("Close", key=f"close_{i}"):
                 st.session_state.user_balance += pnl
                 st.session_state.future_positions.pop(i)
