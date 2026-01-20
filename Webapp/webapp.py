@@ -1,14 +1,12 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-import pandas as pd
-import plotly.graph_objects as go
 import time
 
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
+API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ထည့်ရန်
 
 # Weight: 16.329 Grams per Tical
 CONVERSION_FACTOR = 16.329 / 31.1034768
@@ -23,7 +21,6 @@ st.set_page_config(page_title="Gold Exchange System", layout="wide", initial_sid
 # ==========================================
 hide_streamlit_style = """
     <style>
-    /* Footer & Manage App ဖျောက်ခြင်း (သန့်ရှင်းအောင်) */
     footer {display: none !important;}
     [data-testid="stFooter"] {display: none !important;}
     .stAppDeployButton {display: none !important;}
@@ -74,42 +71,6 @@ def fetch_realtime_prices():
             st.session_state.price_status = "Live 🟢"     
     except:
         pass
-
-@st.cache_data(ttl=60) 
-def get_chart_data_usd(symbol):
-    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&outputsize=30&apikey={API_KEY}"
-    try:
-        res = requests.get(url).json()
-        if 'values' in res:
-            df = pd.DataFrame(res['values'])
-            df['datetime'] = pd.to_datetime(df['datetime'])
-            cols = ['open', 'high', 'low', 'close']
-            df[cols] = df[cols].astype(float)
-            return df
-    except:
-        return None
-    return None
-
-def plot_mmk_chart(df_usd, title, rate):
-    if df_usd is None: return None
-    df_mmk = df_usd.copy()
-    
-    # Formula: (USD * Factor * Rate) / 100000 (Lakhs)
-    factor = (CONVERSION_FACTOR * rate) / 100000
-    
-    df_mmk['open'] = df_mmk['open'] * factor
-    df_mmk['high'] = df_mmk['high'] * factor
-    df_mmk['low'] = df_mmk['low'] * factor
-    df_mmk['close'] = df_mmk['close'] * factor
-    
-    fig = go.Figure(data=[go.Candlestick(
-        x=df_mmk['datetime'],
-        open=df_mmk['open'], high=df_mmk['high'],
-        low=df_mmk['low'], close=df_mmk['close'],
-        increasing_line_color="#28a745", decreasing_line_color="#dc3545"
-    )])
-    fig.update_layout(title=f"{title} (Base Price - Lakhs)", height=350, margin=dict(l=10, r=10, t=30, b=10), xaxis_rangeslider_visible=False, template="plotly_white", yaxis_tickformat=".2f")
-    return fig
 
 def calculate_mmk(usd_price):
     return int((usd_price * CONVERSION_FACTOR) * st.session_state.usd_rate)
@@ -169,78 +130,59 @@ def show_market_section():
     gold_mmk = calculate_mmk(gold_usd)
     silver_mmk = calculate_mmk(silver_usd)
     
-    tab1, tab2 = st.tabs(["📊 Market Overview", "📈 Live Charts (Base Price)"])
+    # Tabs ကို ဖျောက်ပြီး Header တပ်လိုက်သည်
+    st.header("📊 Spot Market")
     
-    with tab1:
-        col1, col2 = st.columns(2)
-        # GOLD
-        with col1:
-            st.subheader("🟡 Gold (ရွှေ)")
-            st.metric(label="World Price", value=f"${gold_usd:,.2f}")
-            st.info(f"**Base:** {fmt_price(gold_mmk)} (Lakhs)")
-            buy = gold_mmk + GOLD_SPREAD
-            sell = gold_mmk - GOLD_SPREAD
-            b, s = st.columns(2)
-            if b.button(f"Buy Gold\n{fmt_price(buy)}", key="bg", use_container_width=True):
-                if st.session_state.user_balance >= buy:
-                    st.session_state.user_balance -= buy
-                    st.session_state.user_assets["Gold"] += 1.0
-                    st.session_state.transaction_history.append(f"Bought Gold @ {fmt_price(buy)}")
-                    st.success("Bought!")
-                else:
-                    st.error("Low Balance! (Approve Deposit in Sidebar)")
-            if s.button(f"Sell Gold\n{fmt_price(sell)}", key="sg", use_container_width=True):
-                if st.session_state.user_assets["Gold"] >= 1.0:
-                    st.session_state.user_balance += sell
-                    st.session_state.user_assets["Gold"] -= 1.0
-                    st.session_state.transaction_history.append(f"Sold Gold @ {fmt_price(sell)}")
-                    st.success("Sold!")
-                else:
-                    st.error("No Gold!")
-
-        # SILVER
-        with col2:
-            st.subheader("⚪ Silver (ငွေ)")
-            st.metric(label="World Price", value=f"${silver_usd:,.3f}")
-            st.info(f"**Base:** {fmt_price(silver_mmk)} (Lakhs)")
-            buy_s = silver_mmk + SILVER_SPREAD
-            sell_s = silver_mmk - SILVER_SPREAD
-            b, s = st.columns(2)
-            if b.button(f"Buy Silver\n{fmt_price(buy_s)}", key="bs", use_container_width=True):
-                if st.session_state.user_balance >= buy_s:
-                    st.session_state.user_balance -= buy_s
-                    st.session_state.user_assets["Silver"] += 1.0
-                    st.session_state.transaction_history.append(f"Bought Silver @ {fmt_price(buy_s)}")
-                    st.success("Bought!")
-                else:
-                    st.error("Low Balance! (Approve Deposit in Sidebar)")
-            if s.button(f"Sell Silver\n{fmt_price(sell_s)}", key="ss", use_container_width=True):
-                if st.session_state.user_assets["Silver"] >= 1.0:
-                    st.session_state.user_balance += sell_s
-                    st.session_state.user_assets["Silver"] -= 1.0
-                    st.session_state.transaction_history.append(f"Sold Silver @ {fmt_price(sell_s)}")
-                    st.success("Sold!")
-                else:
-                    st.error("No Silver!")
-
-    with tab2:
-        st.caption(f"Charts showing Base Price in MMK (Lakhs) @ Rate: {st.session_state.usd_rate}")
-        c1, c2 = st.columns(2)
-        current_rate = st.session_state.usd_rate
-        with c1:
-            df_gold = get_chart_data_usd("XAU/USD")
-            if df_gold is not None:
-                fig_g = plot_mmk_chart(df_gold, "Gold Base Price", current_rate)
-                st.plotly_chart(fig_g, use_container_width=True, key="chart_gold")
+    col1, col2 = st.columns(2)
+    # GOLD SECTION
+    with col1:
+        st.subheader("🟡 Gold (ရွှေ)")
+        st.metric(label="World Price", value=f"${gold_usd:,.2f}")
+        st.info(f"**Base:** {fmt_price(gold_mmk)} (Lakhs)")
+        buy = gold_mmk + GOLD_SPREAD
+        sell = gold_mmk - GOLD_SPREAD
+        b, s = st.columns(2)
+        if b.button(f"Buy Gold\n{fmt_price(buy)}", key="bg", use_container_width=True):
+            if st.session_state.user_balance >= buy:
+                st.session_state.user_balance -= buy
+                st.session_state.user_assets["Gold"] += 1.0
+                st.session_state.transaction_history.append(f"Bought Gold @ {fmt_price(buy)}")
+                st.success("Bought!")
             else:
-                st.warning("Loading Gold Chart...")
-        with c2:
-            df_silver = get_chart_data_usd("XAG/USD")
-            if df_silver is not None:
-                fig_s = plot_mmk_chart(df_silver, "Silver Base Price", current_rate)
-                st.plotly_chart(fig_s, use_container_width=True, key="chart_silver")
+                st.error("Low Balance!")
+        if s.button(f"Sell Gold\n{fmt_price(sell)}", key="sg", use_container_width=True):
+            if st.session_state.user_assets["Gold"] >= 1.0:
+                st.session_state.user_balance += sell
+                st.session_state.user_assets["Gold"] -= 1.0
+                st.session_state.transaction_history.append(f"Sold Gold @ {fmt_price(sell)}")
+                st.success("Sold!")
             else:
-                st.warning("Loading Silver Chart...")
+                st.error("No Gold!")
+
+    # SILVER SECTION
+    with col2:
+        st.subheader("⚪ Silver (ငွေ)")
+        st.metric(label="World Price", value=f"${silver_usd:,.3f}")
+        st.info(f"**Base:** {fmt_price(silver_mmk)} (Lakhs)")
+        buy_s = silver_mmk + SILVER_SPREAD
+        sell_s = silver_mmk - SILVER_SPREAD
+        b, s = st.columns(2)
+        if b.button(f"Buy Silver\n{fmt_price(buy_s)}", key="bs", use_container_width=True):
+            if st.session_state.user_balance >= buy_s:
+                st.session_state.user_balance -= buy_s
+                st.session_state.user_assets["Silver"] += 1.0
+                st.session_state.transaction_history.append(f"Bought Silver @ {fmt_price(buy_s)}")
+                st.success("Bought!")
+            else:
+                st.error("Low Balance!")
+        if s.button(f"Sell Silver\n{fmt_price(sell_s)}", key="ss", use_container_width=True):
+            if st.session_state.user_assets["Silver"] >= 1.0:
+                st.session_state.user_balance += sell_s
+                st.session_state.user_assets["Silver"] -= 1.0
+                st.session_state.transaction_history.append(f"Sold Silver @ {fmt_price(sell_s)}")
+                st.success("Sold!")
+            else:
+                st.error("No Silver!")
 
 show_market_section()
 
@@ -251,7 +193,7 @@ w1.metric("Cash Balance", f"{st.session_state.user_balance:,.0f} Ks")
 w2.metric("Gold Assets", f"{st.session_state.user_assets['Gold']:.2f} Tical")
 w3.metric("Silver Assets", f"{st.session_state.user_assets['Silver']:.2f} Tical")
 
-# Button Color Styling
+# Button Styling
 components.html("""
 <script>
     setInterval(function() {
