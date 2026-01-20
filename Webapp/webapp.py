@@ -10,37 +10,29 @@ import time
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
 
-# ⚠️ Updated: 16.329 Grams per Tical
+# Weight: 16.329 Grams per Tical
 CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
 # Sidebar ကို အမြဲတမ်း ဖွင့်ထားရန်
-st.set_page_config(page_title="Gold Exchange", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Gold Exchange System", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 🛑 UI CLEANER (Manage App & Footer ဖျောက်ခြင်း)
+# 🛑 UI CLEANER
 # ==========================================
 hide_streamlit_style = """
     <style>
-    /* Footer (Manage App) ကို ဖျောက်ခြင်း */
+    /* Footer & Manage App ဖျောက်ခြင်း (သန့်ရှင်းအောင်) */
     footer {display: none !important;}
     [data-testid="stFooter"] {display: none !important;}
-    
-    /* Deploy Button ကို ဖျောက်ခြင်း */
     .stAppDeployButton {display: none !important;}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # ==========================================
-# ၂။ Admin/User Mode Checking
-# ==========================================
-query_params = st.query_params
-is_admin = query_params.get("view") == "admin"
-
-# ==========================================
-# ၃။ Session State Initialization
+# ၂။ Session State Initialization
 # ==========================================
 if 'last_gold_price' not in st.session_state:
     st.session_state.last_gold_price = 2650.00
@@ -49,7 +41,7 @@ if 'last_silver_price' not in st.session_state:
 if 'price_status' not in st.session_state:
     st.session_state.price_status = "Init"
 
-# ⚠️ Updated: Default Rate = 4000
+# Default Rate: 4000
 if 'usd_rate' not in st.session_state:
     st.session_state.usd_rate = 4000.0 
 
@@ -59,15 +51,13 @@ if 'user_assets' not in st.session_state:
     st.session_state.user_assets = {"Gold": 0.0, "Silver": 0.0}
 if 'deposit_requests' not in st.session_state:
     st.session_state.deposit_requests = [
-        {"id": 1, "user": "Demo User", "amount": 1000000, "status": "Pending"},
+        {"id": 1, "user": "Test User", "amount": 1000000, "status": "Pending"},
     ]
 if 'transaction_history' not in st.session_state:
     st.session_state.transaction_history = []
-if 'user_messages' not in st.session_state:
-    st.session_state.user_messages = []
 
 # ==========================================
-# ၄။ Helper Functions
+# ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
@@ -128,58 +118,48 @@ def fmt_price(mmk_value):
     return f"{mmk_value/100000:,.2f}"
 
 # ==========================================
-# ၅။ SIDEBAR (Admin Only)
+# ၄။ SIDEBAR (System Control)
 # ==========================================
 with st.sidebar:
-    # Admin View ဖြစ်မှသာ Tools တွေ ပေါ်မယ်
-    if is_admin:
-        st.header("🔧 Admin Panel")
-        st.success("Mode: Admin")
-        
-        status_color = "green" if "Live" in st.session_state.price_status else "red"
-        st.markdown(f"API Status: :{status_color}[{st.session_state.price_status}]")
-        
-        if st.button("Refresh Page"):
-            st.rerun()
+    st.header("⚙️ System Control")
+    
+    # API Status
+    status_color = "green" if "Live" in st.session_state.price_status else "red"
+    st.markdown(f"API Status: :{status_color}[{st.session_state.price_status}]")
+    
+    if st.button("Refresh System"):
+        st.rerun()
 
-        st.divider()
-        st.write("Exchange Rate Setting")
-        new_rate = st.number_input("Exchange Rate (MMK)", value=st.session_state.usd_rate)
-        if st.button("Update Rate"):
-            st.session_state.usd_rate = new_rate
-            st.cache_data.clear()
-            st.rerun()
-            
-        st.divider()
-        st.subheader("💰 Deposit Requests")
-        pending_list = [d for d in st.session_state.deposit_requests if d['status'] == "Pending"]
-        if not pending_list:
-            st.info("No pending requests.")
-        else:
-            for req in pending_list:
-                with st.expander(f"{req['user']} : {req['amount']:,} Ks"):
-                    if st.button("✅ Approve", key=f"app_{req['id']}"):
-                        req['status'] = "Approved"
-                        st.session_state.user_balance += req['amount']
-                        st.rerun()
+    st.divider()
+    
+    # Rate Control
+    st.subheader("Currency Setting")
+    new_rate = st.number_input("USD Exchange Rate", value=st.session_state.usd_rate)
+    if st.button("Update Rate"):
+        st.session_state.usd_rate = new_rate
+        st.cache_data.clear()
+        st.rerun()
         
-        st.divider()
-        st.info("User Link: Remove `?view=admin` from URL")
-
-    # User View
+    st.divider()
+    
+    # Simulated Deposit Requests (Test Area)
+    st.subheader("💰 Deposit Requests (Test)")
+    pending_list = [d for d in st.session_state.deposit_requests if d['status'] == "Pending"]
+    if not pending_list:
+        st.info("No pending requests.")
     else:
-        st.header("👋 Welcome")
-        st.info("Please contact Admin to deposit funds.")
-        st.write("---")
-        st.write("**Contact Us:**")
-        st.write("📞 09-xxxxxxxxx")
-        st.write("💬 Viber / Telegram")
+        for req in pending_list:
+            with st.expander(f"{req['user']} : {req['amount']:,} Ks"):
+                if st.button("✅ Approve", key=f"app_{req['id']}"):
+                    req['status'] = "Approved"
+                    st.session_state.user_balance += req['amount']
+                    st.rerun()
 
 # ==========================================
-# ၆။ MAIN PAGE
+# ၅။ MAIN DASHBOARD
 # ==========================================
-st.title("🏆 Myanmar Gold & Silver Exchange")
-st.write(f"**Exchange Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
+st.title("🏗️ Gold & Silver Exchange (Builder Mode)")
+st.write(f"**Current Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
 
 @st.fragment(run_every=3)
 def show_market_section():
@@ -208,7 +188,7 @@ def show_market_section():
                     st.session_state.transaction_history.append(f"Bought Gold @ {fmt_price(buy)}")
                     st.success("Bought!")
                 else:
-                    st.error("Low Balance!")
+                    st.error("Low Balance! (Approve Deposit in Sidebar)")
             if s.button(f"Sell Gold\n{fmt_price(sell)}", key="sg", use_container_width=True):
                 if st.session_state.user_assets["Gold"] >= 1.0:
                     st.session_state.user_balance += sell
@@ -233,7 +213,7 @@ def show_market_section():
                     st.session_state.transaction_history.append(f"Bought Silver @ {fmt_price(buy_s)}")
                     st.success("Bought!")
                 else:
-                    st.error("Low Balance!")
+                    st.error("Low Balance! (Approve Deposit in Sidebar)")
             if s.button(f"Sell Silver\n{fmt_price(sell_s)}", key="ss", use_container_width=True):
                 if st.session_state.user_assets["Silver"] >= 1.0:
                     st.session_state.user_balance += sell_s
@@ -265,12 +245,13 @@ def show_market_section():
 show_market_section()
 
 st.divider()
-st.subheader("👤 My Wallet")
+st.subheader("👤 Wallet (Test View)")
 w1, w2, w3 = st.columns(3)
 w1.metric("Cash Balance", f"{st.session_state.user_balance:,.0f} Ks")
 w2.metric("Gold Assets", f"{st.session_state.user_assets['Gold']:.2f} Tical")
 w3.metric("Silver Assets", f"{st.session_state.user_assets['Silver']:.2f} Tical")
 
+# Button Color Styling
 components.html("""
 <script>
     setInterval(function() {
