@@ -59,7 +59,7 @@ if 'transaction_history' not in st.session_state:
 # ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
-    # ⚠️ Spot ဈေး (၂) ခုတည်းကိုပဲ ဆွဲပါတယ် (Future အတွက် သက်သက်မဆွဲပါ)
+    # ⚠️ (1) API Call per Refresh only
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
         response = requests.get(url, timeout=2) 
@@ -119,12 +119,12 @@ with st.sidebar:
 st.title("🏗️ Gold & Silver Exchange")
 st.write(f"**Current Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
 
-# ⚠️ Time Interval ကို 10 စက္ကန့် ပြောင်းလိုက်ပါသည်
-@st.fragment(run_every=10)
+# ⚠️ Time Interval = 5 Seconds
+@st.fragment(run_every=5)
 def show_market_section():
     fetch_realtime_prices()
     
-    # Shared Data (ဒီဈေးနှုန်းတွေကိုပဲ Spot ရော Future မှာပါ သုံးမယ်)
+    # Shared Data
     gold_usd = st.session_state.last_gold_price
     silver_usd = st.session_state.last_silver_price
     gold_mmk = calculate_mmk(gold_usd)
@@ -243,7 +243,6 @@ def show_market_section():
         
         if st.session_state.future_positions:
             for i, pos in enumerate(st.session_state.future_positions):
-                # Calculate Current Market Values (Using Shared Spot Prices)
                 if pos['symbol'] == "Gold":
                     current_base = gold_mmk
                     market_spread = GOLD_SPREAD
@@ -251,11 +250,9 @@ def show_market_section():
                     current_base = silver_mmk
                     market_spread = SILVER_SPREAD
                 
-                # Exit Logic
                 exit_price_long = current_base - market_spread
                 exit_price_short = current_base + market_spread
                 
-                # P/L Logic
                 if pos['type'] == "Long":
                     pnl = exit_price_long - pos['entry']
                 else:
@@ -285,7 +282,6 @@ w1.metric("Cash Balance", f"{st.session_state.user_balance:,.0f} Ks")
 w2.metric("Spot Gold", f"{st.session_state.spot_assets['Gold']:.2f} Tical")
 w3.metric("Spot Silver", f"{st.session_state.spot_assets['Silver']:.2f} Tical")
 
-# Button Coloring
 components.html("""
 <script>
     setInterval(function() {
