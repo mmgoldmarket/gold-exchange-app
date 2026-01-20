@@ -59,7 +59,7 @@ if 'transaction_history' not in st.session_state:
 # ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
-    # ⚠️ ဒီနေရာမှာ Spot ဈေး (၂) ခုတည်းကိုပဲ ဆွဲပါတယ် (Future အတွက် သက်သက်မဆွဲပါ)
+    # ⚠️ Spot ဈေး (၂) ခုတည်းကိုပဲ ဆွဲပါတယ် (Future အတွက် သက်သက်မဆွဲပါ)
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
         response = requests.get(url, timeout=2) 
@@ -119,8 +119,8 @@ with st.sidebar:
 st.title("🏗️ Gold & Silver Exchange")
 st.write(f"**Current Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
 
-# ⚠️ Time Interval ကို 15 စက္ကန့် ပြောင်းလိုက်ပါသည် (API မပိတ်အောင်)
-@st.fragment(run_every=15)
+# ⚠️ Time Interval ကို 10 စက္ကန့် ပြောင်းလိုက်ပါသည်
+@st.fragment(run_every=10)
 def show_market_section():
     fetch_realtime_prices()
     
@@ -194,7 +194,7 @@ def show_market_section():
         
         fc1, fc2 = st.columns(2)
         
-        # --- GOLD FUTURE (Using same 'gold_usd' & 'gold_mmk') ---
+        # --- GOLD FUTURE ---
         with fc1:
             st.markdown(f"### 🟡 Gold Future")
             # Spread Calculation
@@ -216,7 +216,7 @@ def show_market_section():
                 })
                 st.success("Opened Short Position")
 
-        # --- SILVER FUTURE (Using same 'silver_usd' & 'silver_mmk') ---
+        # --- SILVER FUTURE ---
         with fc2:
             st.markdown(f"### ⚪ Silver Future")
             # Spread Calculation
