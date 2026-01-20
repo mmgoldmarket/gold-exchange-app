@@ -131,12 +131,12 @@ main_tab1, main_tab2 = st.tabs(["Store (Spot Market)", "Trading (Future Market)"
 # TAB 1: SPOT MARKET
 # ------------------------------------------
 with main_tab1:
-    st.subheader("📦 Spot Market (Physical Asset)")
+    st.subheader("📦 Spot Market") # ✅ Removed (Physical Asset)
     c1, c2 = st.columns(2)
     
     # Gold Spot
     with c1:
-        st.metric(label="World Price", value=f"${gold_usd:,.2f}") # ✅ Added World Price
+        st.metric(label="World Price", value=f"${gold_usd:,.2f}") 
         st.info(f"**Gold Base:** {fmt_price(gold_mmk)} Lakhs")
         spot_buy_g = gold_mmk + GOLD_SPREAD
         spot_sell_g = gold_mmk - GOLD_SPREAD
@@ -163,7 +163,7 @@ with main_tab1:
 
     # Silver Spot
     with c2:
-        st.metric(label="World Price", value=f"${silver_usd:,.3f}") # ✅ Added World Price
+        st.metric(label="World Price", value=f"${silver_usd:,.3f}") 
         st.info(f"**Silver Base:** {fmt_price(silver_mmk)} Lakhs")
         spot_buy_s = silver_mmk + SILVER_SPREAD
         spot_sell_s = silver_mmk - SILVER_SPREAD
@@ -189,10 +189,10 @@ with main_tab1:
                 st.error("No Silver!")
 
 # ------------------------------------------
-# TAB 2: FUTURE MARKET (With Spread)
+# TAB 2: FUTURE MARKET
 # ------------------------------------------
 with main_tab2:
-    st.subheader("📈 Future Market (With Spread)")
+    st.subheader("📈 Future Market") # ✅ Removed (With Spread)
     
     fc1, fc2 = st.columns(2)
     
@@ -203,7 +203,7 @@ with main_tab2:
         future_buy_g = gold_mmk + GOLD_SPREAD  
         future_sell_g = gold_mmk - GOLD_SPREAD 
         
-        st.metric(label="World Price", value=f"${gold_usd:,.2f}") # ✅ Added World Price
+        st.metric(label="World Price", value=f"${gold_usd:,.2f}") 
         st.caption(f"Base Price: {fmt_price(gold_mmk)} Lakhs")
         
         if st.button(f"LONG (Buy)\n{fmt_price(future_buy_g)}", key="f_long_g", use_container_width=True):
@@ -225,7 +225,7 @@ with main_tab2:
         future_buy_s = silver_mmk + SILVER_SPREAD
         future_sell_s = silver_mmk - SILVER_SPREAD
         
-        st.metric(label="World Price", value=f"${silver_usd:,.3f}") # ✅ Added World Price
+        st.metric(label="World Price", value=f"${silver_usd:,.3f}") 
         st.caption(f"Base Price: {fmt_price(silver_mmk)} Lakhs")
         
         if st.button(f"LONG (Buy)\n{fmt_price(future_buy_s)}", key="f_long_s", use_container_width=True):
