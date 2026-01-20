@@ -9,17 +9,18 @@ import time
 # ၁။ Setting & Configuration
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ကို ထည့်ပါ
-CONVERSION_FACTOR = 16.606 / 31.1034768
+
+# ⚠️ Updated: 16.329 Grams per Tical
+CONVERSION_FACTOR = 16.329 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
-# Sidebar ကို အမြဲတမ်း ဖွင့်ထားရန် (expanded) သတ်မှတ်သည်
+# Sidebar ကို အမြဲတမ်း ဖွင့်ထားရန်
 st.set_page_config(page_title="Gold Exchange", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 🛑 UI CLEANER (Fixed Version)
+# 🛑 UI CLEANER (Manage App & Footer ဖျောက်ခြင်း)
 # ==========================================
-# Sidebar ခလုတ်မပျောက်အောင် Header ကို မဖျောက်ဘဲ Footer ကိုပဲ ဖျောက်ပါမည်
 hide_streamlit_style = """
     <style>
     /* Footer (Manage App) ကို ဖျောက်ခြင်း */
@@ -28,9 +29,6 @@ hide_streamlit_style = """
     
     /* Deploy Button ကို ဖျောက်ခြင်း */
     .stAppDeployButton {display: none !important;}
-    
-    /* ညာဘက်အပေါ်ထောင့်က 3-dots Menu ကို ဖျောက်ချင်ရင် အောက်ပါလိုင်းကို သုံးပါ (မဖျောက်ချင်ရင် ဖြုတ်ထားနိုင်သည်) */
-    /* #MainMenu {visibility: hidden;} */
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -50,8 +48,11 @@ if 'last_silver_price' not in st.session_state:
     st.session_state.last_silver_price = 31.50
 if 'price_status' not in st.session_state:
     st.session_state.price_status = "Init"
+
+# ⚠️ Updated: Default Rate = 4000
 if 'usd_rate' not in st.session_state:
-    st.session_state.usd_rate = 3959.1 
+    st.session_state.usd_rate = 4000.0 
+
 if 'user_balance' not in st.session_state:
     st.session_state.user_balance = 0.0
 if 'user_assets' not in st.session_state:
@@ -102,7 +103,10 @@ def get_chart_data_usd(symbol):
 def plot_mmk_chart(df_usd, title, rate):
     if df_usd is None: return None
     df_mmk = df_usd.copy()
+    
+    # Formula: (USD * Factor * Rate) / 100000 (Lakhs)
     factor = (CONVERSION_FACTOR * rate) / 100000
+    
     df_mmk['open'] = df_mmk['open'] * factor
     df_mmk['high'] = df_mmk['high'] * factor
     df_mmk['low'] = df_mmk['low'] * factor
@@ -162,7 +166,7 @@ with st.sidebar:
         st.divider()
         st.info("User Link: Remove `?view=admin` from URL")
 
-    # User View ဆိုရင် Welcome ပဲပြမယ် (ဒါပေမဲ့ Sidebar က ပျောက်မနေတော့ဘူး)
+    # User View
     else:
         st.header("👋 Welcome")
         st.info("Please contact Admin to deposit funds.")
