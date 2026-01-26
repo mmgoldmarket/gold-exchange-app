@@ -8,8 +8,8 @@ import time
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ထည့်ရန်
 
-# Conversion Factors
-CONVERSION_FACTOR = 16.329 / 31.1034768
+# ⚠️ Updated Weight: 16.606 Grams per Tical
+CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
