@@ -8,13 +8,13 @@ import time
 # ==========================================
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"  # ⚠️ Paid Key ထည့်ရန်
 
-# ⚠️ Updated Weight: 16.606 Grams per Tical
+# Weight: 16.606 Grams per Tical
 CONVERSION_FACTOR = 16.606 / 31.1034768
 GOLD_SPREAD = 5000
 SILVER_SPREAD = 1000
 
 # Sidebar Config
-st.set_page_config(page_title="Gold Exchange System", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VIP Group Exchange", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 🛑 UI CLEANER
@@ -38,8 +38,9 @@ if 'last_silver_price' not in st.session_state:
 if 'price_status' not in st.session_state:
     st.session_state.price_status = "Init"
 
+# Rate: 3959.1
 if 'usd_rate' not in st.session_state:
-    st.session_state.usd_rate = 4000.0 
+    st.session_state.usd_rate = 3959.1 
 
 if 'user_balance' not in st.session_state:
     st.session_state.user_balance = 0.0
@@ -79,6 +80,7 @@ def calculate_mmk(usd_price):
     return int((usd_price * CONVERSION_FACTOR) * st.session_state.usd_rate)
 
 def fmt_price(mmk_value):
+    # MMK Price in Lakhs (2 Decimal Places)
     return f"{mmk_value/100000:,.2f}"
 
 # ==========================================
@@ -94,7 +96,8 @@ with st.sidebar:
     st.divider()
     
     st.subheader("Currency Setting")
-    new_rate = st.number_input("USD Rate", value=st.session_state.usd_rate)
+    # Rate Input Format: 2 Decimals (e.g., 3959.10)
+    new_rate = st.number_input("USD Rate", value=st.session_state.usd_rate, format="%.2f")
     if st.button("Update Rate"):
         st.session_state.usd_rate = new_rate
         st.cache_data.clear()
@@ -116,8 +119,9 @@ with st.sidebar:
 # ==========================================
 # ၅။ MAIN DASHBOARD
 # ==========================================
-st.title("🏗️ Gold & Silver Exchange")
-st.write(f"**Current Rate:** 1 USD = {st.session_state.usd_rate:,.0f} MMK")
+st.title("🏆 VIP Group Gold & Silver Exchange")
+# Rate Display: 2 Decimal Places
+st.write(f"**Western Union Rate:** 1 USD = {st.session_state.usd_rate:,.2f} MMK")
 
 # ⚠️ Time Interval = 5 Seconds
 @st.fragment(run_every=5)
@@ -165,7 +169,8 @@ def show_market_section():
 
         # Silver Spot
         with c2:
-            st.metric(label="World Price", value=f"${silver_usd:,.3f}") 
+            # ⚠️ Silver World Price: 2 Decimal Places
+            st.metric(label="World Price", value=f"${silver_usd:,.2f}") 
             st.info(f"**Silver Base:** {fmt_price(silver_mmk)} Lakhs")
             spot_buy_s = silver_mmk + SILVER_SPREAD
             spot_sell_s = silver_mmk - SILVER_SPREAD
@@ -187,7 +192,7 @@ def show_market_section():
                     st.error("No Silver!")
 
     # ------------------------------------------
-    # TAB 2: FUTURE MARKET (Reusing Spot Data)
+    # TAB 2: FUTURE MARKET
     # ------------------------------------------
     with main_tab2:
         st.subheader("📈 Future Market")
@@ -197,7 +202,6 @@ def show_market_section():
         # --- GOLD FUTURE ---
         with fc1:
             st.markdown(f"### 🟡 Gold Future")
-            # Spread Calculation
             future_buy_g = gold_mmk + GOLD_SPREAD  
             future_sell_g = gold_mmk - GOLD_SPREAD 
             
@@ -219,11 +223,11 @@ def show_market_section():
         # --- SILVER FUTURE ---
         with fc2:
             st.markdown(f"### ⚪ Silver Future")
-            # Spread Calculation
             future_buy_s = silver_mmk + SILVER_SPREAD
             future_sell_s = silver_mmk - SILVER_SPREAD
             
-            st.metric(label="World Price", value=f"${silver_usd:,.3f}") 
+            # ⚠️ Silver World Price: 2 Decimal Places
+            st.metric(label="World Price", value=f"${silver_usd:,.2f}") 
             st.caption(f"Base Price: {fmt_price(silver_mmk)} Lakhs")
             
             if st.button(f"LONG (Buy)\n{fmt_price(future_buy_s)}", key="f_long_s", use_container_width=True):
