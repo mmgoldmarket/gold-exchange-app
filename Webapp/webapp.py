@@ -2,11 +2,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import requests
 import time
+import os
 
 # ==========================================
 # ၁။ Setting & Configuration
 # ==========================================
-# ✅ Updated API Key (From User)
 API_KEY = "b005ad2097b843d59d9c44ddfd3f9038"
 
 # Weight: 16.606 Grams per Tical
@@ -60,7 +60,6 @@ if 'transaction_history' not in st.session_state:
 # ၃။ Helper Functions
 # ==========================================
 def fetch_realtime_prices():
-    # ⚠️ (1) API Call per Refresh only
     url = f"https://api.twelvedata.com/price?symbol=XAU/USD,XAG/USD&apikey={API_KEY}"
     try:
         response = requests.get(url, timeout=2) 
@@ -120,10 +119,13 @@ with st.sidebar:
 col_logo, col_title = st.columns([1, 7])
 
 with col_logo:
-    # ✅ Online Logo URL (Stable)
-    # အကယ်၍ အစ်ကို့ပုံ အတိအကျလိုချင်ရင်တော့ GitHub မှာ vip_logo.jpg နာမည်နဲ့ Upload တင်မှရပါမယ်
-    # လောလောဆယ် Error မတက်အောင် Online VIP Icon လေး ထည့်ပေးထားပါတယ်
-    st.image("https://cdn-icons-png.flaticon.com/512/6941/6941697.png", width=85)
+    # ✅ GitHub မှာ 'vip_logo.png' နာမည်နဲ့ တင်ထားရပါမယ်
+    if os.path.exists("vip_logo.png"):
+        st.image("vip_logo.png", width=100) # ပုံအသစ်အတွက် Size ချိန်ထားသည်
+    elif os.path.exists("vip_logo.jpg"):
+        st.image("vip_logo.jpg", width=85)
+    else:
+        st.write("## 🏆")
 
 with col_title:
     st.title("VIP Group Gold & Silver Exchange")
